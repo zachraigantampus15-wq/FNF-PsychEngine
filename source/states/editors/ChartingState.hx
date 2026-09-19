@@ -163,8 +163,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		24
 	];
 	var curZoom:Float = 1;
-
-	var mustHitIndicator:FlxSprite;
+        var mustHitIndicator:FlxSprite;
 	var eventIcon:FlxSprite;
 	var icons:Array<HealthIcon> = [];
 
@@ -216,6 +215,19 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 	var waveformEnabled:Bool = false;
 	var waveformTarget:WaveformTarget = INST;
 
+	var characterPreviewEnabled:Bool = true;
+	var opponentPreviewWindow:FlxSprite;
+	var playerPreviewWindow:FlxSprite;
+	var opponentPreviewTitle:FlxText;
+	var playerPreviewTitle:FlxText;
+	var opponentPreview:Character;
+	var playerPreview:Character;
+	var previewDanceTimer:Float = 0;
+	var previewPlayerName:String = '';
+	var previewOpponentName:String = '';
+	var previewWindowWidth:Int = 250;
+	var previewWindowHeight:Int = 230;
+
 	override function create()
 	{
 		if(Difficulty.list.length < 1) Difficulty.resetList();
@@ -248,6 +260,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		if(chartEditorSave.data.autoSave != null) autoSaveCap = chartEditorSave.data.autoSave;
 		if(chartEditorSave.data.backupLimit != null) backupLimit = chartEditorSave.data.backupLimit;
 		if(chartEditorSave.data.vortex != null) vortexEnabled = chartEditorSave.data.vortex;
+		if(chartEditorSave.data.characterPreviewEnabled != null) characterPreviewEnabled = chartEditorSave.data.characterPreviewEnabled;
 
 		if(chartEditorSave.data.customBgColor == null) chartEditorSave.data.customBgColor = '303030';
 		if(chartEditorSave.data.customGridColors == null || chartEditorSave.data.customGridColors.length < 2)
@@ -388,6 +401,8 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		mainBox.cameras = [camUI];
 		add(mainBox);
 
+		createCharacterPreviews();
+
 		autoSaveIcon = new FlxSprite(50).loadGraphic(Paths.image('editors/autosave'));
 		autoSaveIcon.screenCenter(Y);
 		autoSaveIcon.scale.set(0.6, 0.6);
@@ -395,8 +410,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		autoSaveIcon.scrollFactor.set();
 		autoSaveIcon.alpha = 0;
 		add(autoSaveIcon);
-
-		// save data positions for the UI boxes
+                // save data positions for the UI boxes
 		if(chartEditorSave.data.mainBoxPosition != null && chartEditorSave.data.mainBoxPosition.length > 1)
 			mainBox.setPosition(chartEditorSave.data.mainBoxPosition[0], chartEditorSave.data.mainBoxPosition[1]);
 		if(chartEditorSave.data.infoBoxPosition != null && chartEditorSave.data.infoBoxPosition.length > 1)
@@ -472,6 +486,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 
 		stageDropDown.list = loadFileList('stages/', 'data/stageList.txt');
 		onChartLoaded();
+		refreshCharacterPreviews(true);
 
 		var tipText:FlxText = new FlxText(FlxG.width - 210, FlxG.height - 30, 200, 'Press ${(controls.mobileC) ? 'F' : 'F1'} for Help', 20);
 		tipText.cameras = [camUI];
@@ -664,8 +679,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		girlfriendDropDown.selectedLabel = PlayState.SONG.gfVersion;
 		stageDropDown.selectedLabel = PlayState.SONG.stage;
 		StageData.loadDirectory(PlayState.SONG);
-
-		// DATA TAB
+                // DATA TAB
 		gameOverCharDropDown.selectedLabel = PlayState.SONG.gameOverChar;
 		gameOverSndInputText.text = PlayState.SONG.gameOverSound;
 		gameOverLoopInputText.text = PlayState.SONG.gameOverLoop;
@@ -675,6 +689,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 
 		noteTextureInputText.text = PlayState.SONG.arrowSkin;
 		noteSplashesInputText.text = PlayState.SONG.splashSkin;
+		refreshCharacterPreviews(true);
 	}
 	
 	var noteSelectionSine:Float = 0;
@@ -780,6 +795,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		}
 
 		ClientPrefs.toggleVolumeKeys(PsychUIInputText.focusOn == null);
+		updateCharacterPreviews(elapsed);
 
 		var lastTime:Float = Conductor.songPosition;
 		outputAlpha = Math.max(0, outputAlpha - elapsed);
@@ -1117,9 +1133,8 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 				}
 				else if(FlxG.keys.justPressed.S) // Save (Ctrl + S)
 					saveChart();
-			}
-			
-			if(doCut || FlxG.keys.justPressed.DELETE || FlxG.keys.justPressed.BACKSPACE || (isMovingNotes && (FlxG.mouse.justPressedRight || FlxG.keys.justPressed.ESCAPE))) // Delete button
+                        }
+                if(doCut || FlxG.keys.justPressed.DELETE || FlxG.keys.justPressed.BACKSPACE || (isMovingNotes && (FlxG.mouse.justPressedRight || FlxG.keys.justPressed.ESCAPE))) // Delete button
 			{
 				if(selectedNotes.length > 0)
 				{
@@ -1623,7 +1638,7 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 	
 								selectedNotes.remove(closest);
 								curRenderedNotes.remove(closest, true);
-								addUndoAction(DELETE_NOTE, !closest.isEvent ? {notes: [closest]} : {events: [closest]});
+                                                                addUndoAction(DELETE_NOTE, !closest.isEvent ? {notes: [closest]} : {events: [closest]});
 							}
 							if(selectedNotes.length == 1) onSelectNote();
 							forceDataUpdate = true;
@@ -2159,8 +2174,8 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 
 	var playbackRate:Float = 1;
 	function setPitch(?value:Null<Float>)
-	{
-		#if FLX_PITCH
+{
+        #if FLX_PITCH
 		if(value == null) value = playbackRate;
 		FlxG.sound.music.pitch = value;
 		vocals.pitch = value;
@@ -3037,6 +3052,16 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 	var changeBpmCheckBox:PsychUICheckBox;
 	var changeBpmStepper:PsychUINumericStepper;
 	var beatsPerSecStepper:PsychUINumericStepper;
+
+	
+
+		
+
+		
+			
+			
+								
+		
 
 	function addSectionTab()
 	{
@@ -4544,6 +4569,19 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		}, btnWid);
 		vortexEditorButton.text.alignment = LEFT;
 		tab_group.add(vortexEditorButton);
+
+		btnY++;
+		btnY += 20;
+		var characterPreviewButton:PsychUIButton = new PsychUIButton(btnX, btnY, characterPreviewEnabled ? '  Character Previews ON' : '  Character Previews OFF', function()
+		{
+			characterPreviewEnabled = !characterPreviewEnabled;
+			chartEditorSave.data.characterPreviewEnabled = characterPreviewEnabled;
+			chartEditorSave.flush();
+			characterPreviewButton.text.text = characterPreviewEnabled ? '  Character Previews ON' : '  Character Previews OFF';
+			setCharacterPreviewVisible(characterPreviewEnabled);
+		}, btnWid);
+		characterPreviewButton.text.alignment = LEFT;
+		tab_group.add(characterPreviewButton);
 		
 		btnY++;
 		btnY += 20;
@@ -5136,6 +5174,8 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 
 		MetaNote.noteTypeTexts = [];
 		fileDialog.destroy();
+		if(opponentPreview != null) { remove(opponentPreview, false); opponentPreview.destroy(); opponentPreview = null; }
+		if(playerPreview != null) { remove(playerPreview, false); playerPreview.destroy(); playerPreview = null; }
 		super.destroy();
 	}
 
@@ -5176,6 +5216,148 @@ class ChartingState extends MusicBeatState implements PsychUIEventHandler.PsychU
 		return fileList;
 	}
 	
+	function createCharacterPreviews():Void
+	{
+		var windowY:Float = FlxG.height * 0.22;
+		var leftX:Float = 70;
+		var rightX:Float = FlxG.width - previewWindowWidth - 70;
+		if(rightX < leftX + previewWindowWidth + 40)
+		{
+			leftX = 20;
+			rightX = FlxG.width - previewWindowWidth - 20;
+		}
+		if(rightX < leftX + previewWindowWidth + 20)
+		{
+			previewWindowWidth = 200;
+			previewWindowHeight = 200;
+			leftX = 10;
+			rightX = FlxG.width - previewWindowWidth - 10;
+			windowY = Math.max(80, FlxG.height * 0.18);
+		}
+
+		opponentPreviewWindow = new FlxSprite(leftX, windowY).makeGraphic(previewWindowWidth, previewWindowHeight, 0xEE17191F);
+		opponentPreviewWindow.scrollFactor.set();
+		opponentPreviewWindow.cameras = [camUI];
+		add(opponentPreviewWindow);
+
+		playerPreviewWindow = new FlxSprite(rightX, windowY).makeGraphic(previewWindowWidth, previewWindowHeight, 0xEE17191F);
+		playerPreviewWindow.scrollFactor.set();
+		playerPreviewWindow.cameras = [camUI];
+		add(playerPreviewWindow);
+
+		opponentPreviewTitle = new FlxText(opponentPreviewWindow.x + 8, opponentPreviewWindow.y + 5, previewWindowWidth - 16, 'Opponent Preview', 16);
+		opponentPreviewTitle.setFormat(null, 16, FlxColor.WHITE, LEFT);
+		opponentPreviewTitle.borderSize = 1;
+		opponentPreviewTitle.borderColor = FlxColor.BLACK;
+		opponentPreviewTitle.scrollFactor.set();
+		opponentPreviewTitle.cameras = [camUI];
+		add(opponentPreviewTitle);
+
+		playerPreviewTitle = new FlxText(playerPreviewWindow.x + 8, playerPreviewWindow.y + 5, previewWindowWidth - 16, 'Player Preview', 16);
+		playerPreviewTitle.setFormat(null, 16, FlxColor.WHITE, LEFT);
+		playerPreviewTitle.borderSize = 1;
+		playerPreviewTitle.borderColor = FlxColor.BLACK;
+		playerPreviewTitle.scrollFactor.set();
+		playerPreviewTitle.cameras = [camUI];
+		add(playerPreviewTitle);
+
+		setCharacterPreviewVisible(characterPreviewEnabled);
+	}
+
+	function refreshCharacterPreviews(?force:Bool = false):Void
+	{
+		if(PlayState.SONG == null || opponentPreviewWindow == null) return;
+
+		var newPlayer:String = PlayState.SONG.player1;
+		var newOpponent:String = PlayState.SONG.player2;
+		if(newPlayer == null || newPlayer.length < 1) newPlayer = 'bf';
+		if(newOpponent == null || newOpponent.length < 1) newOpponent = 'dad';
+
+		if(force || newPlayer != previewPlayerName)
+		{
+			previewPlayerName = newPlayer;
+			replaceCharacterPreview(true, newPlayer);
+		}
+		if(force || newOpponent != previewOpponentName)
+		{
+			previewOpponentName = newOpponent;
+			replaceCharacterPreview(false, newOpponent);
+		}
+		setCharacterPreviewVisible(characterPreviewEnabled);
+	}
+
+	function replaceCharacterPreview(isPlayer:Bool, characterName:String):Void
+	{
+		var oldCharacter:Character = isPlayer ? playerPreview : opponentPreview;
+		if(oldCharacter != null)
+		{
+			remove(oldCharacter, false);
+			oldCharacter.destroy();
+		}
+
+		var window:FlxSprite = isPlayer ? playerPreviewWindow : opponentPreviewWindow;
+		if(window == null) return;
+
+		var char:Character = new Character(0, 0, characterName, isPlayer);
+		char.cameras = [camUI];
+		char.scrollFactor.set();
+		char.alpha = 1;
+		char.visible = characterPreviewEnabled;
+		char.dance();
+		char.updateHitbox();
+
+		var maxW:Float = window.width - 20;
+		var maxH:Float = window.height - 38;
+		var fit:Float = 1;
+		if(char.width > 0 && char.height > 0)
+			fit = Math.min(1, Math.min(maxW / char.width, maxH / char.height));
+
+		if(fit < 1)
+		{
+			char.scale.x *= fit;
+			char.scale.y *= fit;
+			char.updateHitbox();
+		}
+
+		char.x = window.x + (window.width - char.width) / 2;
+		char.y = window.y + window.height - char.height - 10;
+		add(char);
+
+		if(isPlayer)
+			playerPreview = char;
+		else
+			opponentPreview = char;
+
+		if(isPlayer)
+			playerPreviewTitle.text = 'Player Preview - ' + characterName;
+		else
+			opponentPreviewTitle.text = 'Opponent Preview - ' + characterName;
+	}
+
+	function setCharacterPreviewVisible(value:Bool):Void
+	{
+		if(opponentPreviewWindow != null) opponentPreviewWindow.visible = value;
+		if(playerPreviewWindow != null) playerPreviewWindow.visible = value;
+		if(opponentPreviewTitle != null) opponentPreviewTitle.visible = value;
+		if(playerPreviewTitle != null) playerPreviewTitle.visible = value;
+		if(opponentPreview != null) opponentPreview.visible = value;
+		if(playerPreview != null) playerPreview.visible = value;
+	}
+
+	function updateCharacterPreviews(elapsed:Float):Void
+	{
+		if(!characterPreviewEnabled || opponentPreviewWindow == null || PlayState.SONG == null) return;
+		refreshCharacterPreviews(false);
+
+		previewDanceTimer += elapsed;
+		if(previewDanceTimer >= 0.5)
+		{
+			previewDanceTimer = 0;
+			if(opponentPreview != null && !opponentPreview.specialAnim) opponentPreview.dance();
+			if(playerPreview != null && !playerPreview.specialAnim) playerPreview.dance();
+		}
+	}
+
 	function loadCharacterFile(char:String):CharacterFile
 	{
 		if(char != null)
