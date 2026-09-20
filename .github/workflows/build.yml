@@ -1,9 +1,7 @@
-on:
-  workflow_dispatch:
-  workflow_call:
 name: Build
 
 on:
+  workflow_dispatch:
   workflow_call:
     inputs:
       name:
