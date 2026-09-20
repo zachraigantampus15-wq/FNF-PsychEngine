@@ -19,7 +19,6 @@ on:
       artifactPath:
         required: true
         type: string
-
 env:
   HAXE_VERSION: 4.3.4
   PROJECT_NAME: PsychEngine
