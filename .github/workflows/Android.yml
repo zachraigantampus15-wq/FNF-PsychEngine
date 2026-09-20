@@ -1,0 +1,69 @@
+name: Build Psych Engine Android
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Build Android APK
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Haxe
+        uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: '4.3.6'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Set up Haxelib
+        run: |
+          haxelib setup ~/haxelib
+
+      - name: Install Lime
+        run: |
+          haxelib install lime
+          haxelib run lime setup
+
+      - name: Install OpenFL
+        run: |
+          haxelib install openfl
+          haxelib run openfl setup
+
+      - name: Install Psych Engine dependencies
+        run: |
+          if [ -f hmm.json ]; then
+            haxelib run hmm install
+          fi
+
+      - name: Build Android
+        run: |
+          haxelib run lime build android -64 -release
+
+      - name: Find APK
+        run: |
+          echo "Searching for APK..."
+          find . -type f -name "*.apk" -print
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PsychEngine-1.0.5-Android
+          path: |
+            **/*.apk
+          if-no-files-found: error
