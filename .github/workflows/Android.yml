@@ -45,7 +45,7 @@ jobs:
           haxelib install openfl
           haxelib run openfl setup
 
-            - name: Install Psych Engine dependencies
+      - name: Install Psych Engine dependencies
         run: |
           if [ -f hmm.json ]; then
             haxelib install hmm
