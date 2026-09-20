@@ -35,11 +35,12 @@ jobs:
         run: |
           haxelib setup ~/haxelib
 
-      - name: Install Lime
+            - name: Install Lime
         run: |
           haxelib install lime
           haxelib run lime setup
-
+          haxelib run lime setup android
+          
       - name: Install OpenFL
         run: |
           haxelib install openfl
