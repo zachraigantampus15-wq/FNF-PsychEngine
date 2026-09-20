@@ -46,10 +46,11 @@ jobs:
           haxelib run openfl setup
 
       - name: Install Psych Engine dependencies
-        run: |
-          if [ -f hmm.json ]; then
-            haxelib run hmm install
-          fi
+  run: |
+    if [ -f hmm.json ]; then
+      haxelib install hmm
+      haxelib run hmm install
+    fi
 
       - name: Build Android
         run: |
