@@ -45,12 +45,12 @@ jobs:
           haxelib install openfl
           haxelib run openfl setup
 
-      - name: Install Psych Engine dependencies
-  run: |
-    if [ -f hmm.json ]; then
-      haxelib install hmm
-      haxelib run hmm install
-    fi
+            - name: Install Psych Engine dependencies
+        run: |
+          if [ -f hmm.json ]; then
+            haxelib install hmm
+            haxelib run hmm install
+          fi
 
       - name: Build Android
         run: |
