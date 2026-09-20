@@ -8,10 +8,9 @@ permissions:
 
 jobs:
   android:
-          - name: Build Android
-        run: |
-          haxelib run lime build android -64 -release
-          
+    name: Build Android APK
+    runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
