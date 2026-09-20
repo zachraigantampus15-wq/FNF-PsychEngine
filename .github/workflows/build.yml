@@ -2,6 +2,36 @@ name: Build
 
 on:
   workflow_dispatch:
+    inputs:
+      name:
+        description: Build target
+        required: true
+        default: Android x64
+        type: choice
+        options:
+          - Android x64
+          - Android x32
+      os:
+        description: GitHub runner
+        required: true
+        default: ubuntu-22.04
+        type: string
+      buildArgs:
+        description: Lime build arguments
+        required: true
+        default: android -64
+        type: string
+      artifactName:
+        description: Artifact name
+        required: true
+        default: PsychEngine-Android
+        type: string
+      artifactPath:
+        description: Artifact path
+        required: true
+        default: export/release/android/bin/app/build/outputs/apk/release/app-release.apk
+        type: string
+
   workflow_call:
     inputs:
       name:
@@ -19,7 +49,7 @@ on:
       artifactPath:
         required: true
         type: string
-env:
+        
   HAXE_VERSION: 4.3.4
   PROJECT_NAME: PsychEngine
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
